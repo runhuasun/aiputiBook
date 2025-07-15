@@ -1,0 +1,14 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <!-- 图标的背景边框 -->
+    <rect x="1" y="1" width="30" height="30" rx="4" ry="4" fill="none" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- 第一个人的头部 -->
+    <circle cx="10" cy="10" r="4" fill="#dddddd"/>
+    <!-- 第一个人的身体 -->
+    <path d="M8,14 L8,20 L12,20 L12,14 Z" fill="#dddddd"/>
+
+    <!-- 第二个人的头部 -->
+    <circle cx="22" cy="10" r="4" fill="#dddddd"/>
+    <!-- 第二个人的身体 -->
+    <path d="M20,14 L20,20 L24,20 L24,14 Z" fill="#dddddd"/>
+</svg>

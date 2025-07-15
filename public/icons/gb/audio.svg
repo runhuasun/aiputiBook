@@ -1,0 +1,11 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <!-- 图标的背景边框 -->
+    <rect x="1" y="1" width="30" height="30" rx="4" ry="4" fill="none" stroke="#008080" stroke-width="2"/>
+    
+    <!-- 扬声器形状 -->
+    <polygon points="10,12 10,20 15,20 20,24 20,8 15,12" fill="#71F71E"/>
+
+    <!-- 声波 -->
+    <path d="M23,12 Q26,16 23,20" fill="none" stroke="#71F71E" stroke-width="2"/>
+    <path d="M26,10 Q30,16 26,22" fill="none" stroke="#71F71E" stroke-width="2"/>
+</svg>

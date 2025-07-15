@@ -1,0 +1,13 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <!-- 图标的背景边框 -->
+    <rect x="1" y="1" width="30" height="30" rx="4" ry="4" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+
+    <!-- 硬币的外圈 -->
+    <circle cx="16" cy="16" r="10" fill="#A9A9A9" stroke="#FFFFFF" stroke-width="1.5"/>
+
+    <!-- 硬币上的美元符号 -->
+    <text x="12" y="20" font-size="12" fill="#FFFFFF" font-family="Arial" font-weight="bold">$</text>
+
+    <!-- 硬币的光泽效果 -->
+    <circle cx="12" cy="12" r="3" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.3"/>
+</svg>

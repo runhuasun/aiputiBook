@@ -1,0 +1,13 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <!-- 图标的背景边框 -->
+    <rect x="1" y="1" width="30" height="30" rx="4" ry="4" fill="none" stroke="#008080" stroke-width="2"/>
+    
+    <!-- 圆形的“太阳”或“月亮” -->
+    <circle cx="24" cy="8" r="3" fill="#71F71E"/>
+    
+    <!-- 山的轮廓 -->
+    <polygon points="6,26 14,16 20,24 26,14 30,26" fill="#71F71E"/>
+    
+    <!-- 底部地平线 -->
+    <rect x="4" y="26" width="24" height="2" fill="#008080"/>
+</svg>

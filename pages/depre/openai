@@ -1,0 +1,318 @@
+import type { NextApiRequest, NextApiResponse } from "next";
+import { getServerSession } from "next-auth/next";
+import * as Fetcher from "node-fetch";
+import { Configuration, OpenAIApi } from "openai";
+import Redis from 'ioredis';
+import { EventEmitter } from 'events';
+
+////////////////////////////////////////////////////////////////////////
+// 这个程序都是执行在一台转发代理服务器上的，所以不能访问数据库！！！！！
+////////////////////////////////////////////////////////////////////////
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  try{
+ 
+    const { CMD } = req.query;
+    
+    console.error("----enter opnai.ts-----");
+    console.error("CMD:" + CMD);
+    
+    if(CMD == "text2img"){
+      ///////////////////////////////////////////
+      // 调用DALL-E生成图片
+      //////////////////////////////////////////
+      let predicturl = "https://api.openai.com/v1/images/generations";
+      let authstr = "Bearer " + await chooseAKey();    
+      const bodystr = JSON.stringify(req.body);
+      console.error("Body:" + bodystr);
+      
+      let retry=0;
+      
+      while(retry++ < 10){
+        try{
+          let startResponse = await fetch(predicturl, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: authstr,
+                    },
+                    body: bodystr,
+                });
+
+          if(startResponse.ok){
+            
+            let jsonStartResponse = await startResponse.json();
+            console.error("jsonStartResponse:" + JSON.stringify(jsonStartResponse));
+            // 成功生成图片就返回图片，没有就返回错误信息
+            res.status(200).json(  jsonStartResponse  );
+            break;
+          }
+            
+        }catch(e){
+           console.error("调用OPENAI服务发生错误:"+e);
+        }
+         
+        if(retry < 5){
+          // 每次失败等待3秒再重新尝试
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          console.error("第" + retry + "次重新尝试调用OPENAI服务器");
+        }else{
+           res.status(400).json( "调用OPENAI服务器时发生错误，请稍后再做尝试！" );
+        }
+      }
+
+      
+    }else if(CMD == "prepareChat"){
+      
+      const {messages} = req.body;
+      const key = Date.now().toString();
+      const globalKeyMap = new Redis();
+      await globalKeyMap.set(key, JSON.stringify(messages));    
+      globalKeyMap.disconnect();
+
+      res.status(200).json( key.toString() );
+      return;
+
+    }else if(CMD == "chatStream"){
+      
+      const {key} = req.query;
+      const globalKeyMap = new Redis();      
+      const val = key ? await globalKeyMap.get(key as string) : "";
+      const messages = val ? JSON.parse(val) : {};
+      globalKeyMap.del(key as string);
+      globalKeyMap.disconnect();
+
+      if(messages){
+          let retry = 0;
+          //用一个连接池来处理
+          let openaiKey = await chooseAKey(messages[messages.length-1].name);
+    
+          // 配置openai
+          const configuration = new Configuration({
+            apiKey: openaiKey,
+          });
+          const openai = new OpenAIApi(configuration); 
+          // 如果调用服务器发生错误，重试10次
+          while(retry++ < 10){
+              try{
+                  const completion = await openai.createChatCompletion({
+                        model: "gpt-3.5-turbo-16k-0613",
+                        messages: messages, // [{role: "user", content: "给我讲讲embedding的用法"}],
+                        max_tokens: 4096,
+                        stream: true,
+                        }, { responseType: "stream" });
+                  res.setHeader('Cache-Control', 'no-cache');
+                  res.setHeader('Content-Type', 'text/event-stream');
+                  res.setHeader('Connection', 'keep-alive');
+                  res.flushHeaders();
+    
+                  const eventEmitter = new EventEmitter();
+
+                    // @ts-ignore
+                    completion.data.on('data', (data: Buffer) => {
+                        if(data){
+                            const lines = data.toString().split('\n').filter(line => line.trim() !== '');
+                            for (const line of lines) {
+                                const message = line.replace(/^data: /, '');
+                                if (message === '[DONE]') {
+                                    res.write('data:[DONE]\n\n');
+                                    eventEmitter.emit('parserFinished');          
+                                    return; // Stream finished
+                                }
+                                
+                                try {
+                                    const parsed = JSON.parse(message);
+                                    if(parsed.choices && parsed.choices[0] && parsed.choices[0].delta){
+                                        process.stdout.write(parsed.choices[0].delta.content);
+                                        try{
+                                            res.write("data:" + message + "\n\n");
+                                        }catch(e){
+                                            console.error(e);
+                                        }
+                                    }
+                                } catch(error) {
+                    //                console.error('Could not JSON parse stream message', message, error);
+                                }
+                            }
+                    
+                       }
+                    });
+    
+                    await new Promise<void>(resolve => {
+                      eventEmitter.once('parserFinished', () => {
+                        console.log('Thread parser finished');
+                        resolve();
+                      });
+                    });
+                    res.end();                  
+                    break;
+                }catch(e){
+                  console.error("调用OPENAI服务发生错误:"+e);
+                }
+                
+            if(retry < 10){
+              // 每次失败等待3秒再重新尝试
+              await new Promise((resolve) => setTimeout(resolve, 3000));
+              console.error("第" + retry + "次重新尝试调用OPENAI服务器");
+            }else{
+               res.status(400).json( "调用OPENAI服务器时发生错误，请稍后再做尝试！" );
+            }
+          }
+
+      }
+      
+    }else if(CMD == "chat"){
+      ///////////////////////////////////////////
+      // 调用chatGPT 3.5
+      //////////////////////////////////////////      
+      const {messages} = req.body;
+      console.error("[input message to openai]" + JSON.stringify(messages));
+      
+      let retry = 0;
+      //用一个连接池来处理
+      let openaiKey = await chooseAKey(messages[messages.length-1].name);
+
+      // 配置openai
+      const configuration = new Configuration({
+        apiKey: openaiKey,
+      });
+      const openai = new OpenAIApi(configuration); 
+      // 如果调用服务器发生错误，重试10次
+      while(retry++ < 10){
+        try{
+
+          const completion = await openai.createChatCompletion({
+            model: "gpt-3.5-turbo-16k-0613",
+            messages: messages, // [{role: "user", content: "给我讲讲embedding的用法"}],
+            max_tokens: 4096,
+          });
+
+          console.error("[Output Message] "); 
+          if(completion && completion.data && completion.data.choices[0] && completion.data.choices[0].message && completion.data.usage){
+            console.error("[Output Message] " + completion.data.choices[0].message.role + ":" + completion.data.choices[0].message.content);   
+            console.error("[Used Token] " +  completion.data.usage.total_tokens);
+
+            res.status(200).json( completion.data );
+            break;
+          }
+        }catch(e){
+          console.error("调用OPENAI服务发生错误:"+e);
+        }
+        
+        if(retry < 10){
+          // 每次失败等待3秒再重新尝试
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          console.error("第" + retry + "次重新尝试调用OPENAI服务器");
+        }else{
+           res.status(400).json( "调用OPENAI服务器时发生错误，请稍后再做尝试！" );
+        }
+      }
+      
+      
+    }else if(CMD=="embedding"){
+  
+      ///////////////////////////////////////////
+      // 调用openai embedding 
+      //////////////////////////////////////////      
+      const { input } = req.body;
+      console.error("[input message]" + input);
+      
+      let retry = 0;
+      //用一个连接池来处理
+      let openaiKey = await chooseAKey();
+
+      // 配置openai
+      const configuration = new Configuration({
+        apiKey: openaiKey,
+      });
+      const openai = new OpenAIApi(configuration);   
+      
+      // 如果调用服务器发生错误，重试5次
+      while(retry++ < 5){
+        try{
+
+          const completion = await openai.createEmbedding({
+            model: "text-embedding-ada-002",
+            input: input,
+          });
+
+          if(completion && completion.data && completion.data.data[0] && completion.data.data[0].embedding && completion.data.usage){
+            console.error("[Output Vector length] " + completion.data.data[0].embedding.length);   
+            console.error("[Used Token] " +  completion.data.usage.total_tokens);
+
+            res.status(200).json( completion.data );
+            break;
+          }
+        }catch(e){
+          console.error("调用OPENAI服务发生错误:"+e);
+        }
+        
+        if(retry < 5){
+          // 每次失败等待3秒再重新尝试
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          console.error("第" + retry + "次重新尝试调用OPENAI服务器");
+        }else{
+           res.status(400).json( "调用OPENAI服务器时发生错误，请稍后再做尝试！" );
+        }
+      }      
+      
+      
+    }else {
+      console.error("[Output Message] openai生成失败！" );
+      res.status(400).json( "调用OPENAI服务器时使用了错误的CMD指令！" );
+
+    }
+    
+  } catch (error) {
+    console.error("openai.ts exception");
+    console.error(error);
+    res.status(500).json("调用OPENAI服务器发生未知错误！");
+  }
+  
+}
+
+
+
+//用一个连接池来处理多个账号
+export async function chooseAKey(id?: string): Promise<string>{
+  // 首先在全局影射表里找到对应的Key
+  let openaiKey:string|undefined|null = null;
+  let globalKeyMap = null;
+
+  try{
+    if(id){
+      globalKeyMap = new Redis();
+      openaiKey = await globalKeyMap.get(id);
+    }
+
+    // 如果没发现KEY就分配一个
+    if(!openaiKey){
+
+      if(process.env.OPENAI_API_KEY_POOLSIZE){
+        const keyPoolSize = parseInt(process.env.OPENAI_API_KEY_POOLSIZE);
+        const keyChoice = Math.floor(Math.random() * keyPoolSize) + 1;
+
+        openaiKey = process.env[`OPENAI_API_KEY${keyChoice}`];
+        
+      }else{
+        openaiKey = process.env.OPENAI_API_KEY;
+        console.error("没有发现连接池配置，本次连接使用缺省OPEN_API_KEY");
+      }
+
+      if(id && openaiKey && globalKeyMap){
+        await globalKeyMap.set(id, openaiKey);
+      }
+    }
+  }catch(e){
+    console.error(e);
+  }
+  
+  console.error("本次连接使用OPEN_API_KEY:" + openaiKey);
+  
+  if(globalKeyMap){
+    globalKeyMap.disconnect();
+  }  
+  return openaiKey ? openaiKey : "";
+}

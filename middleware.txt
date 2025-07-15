@@ -1,0 +1,101 @@
+// middleware.ts
+import { NextResponse } from 'next/server';
+
+const invalidUrlCache = new Set();
+const DEFAULT_IMAGE = '/noFileErr.jpg';
+
+export async function middleware(request: Request) {
+  const url = new URL(request.url);
+  console.log('[Middleware] 收到请求 URL:', url.href);
+
+  if (url.pathname.startsWith('/_next/image')) {
+    // 解析关键参数
+    const originalImageUrl = decodeURIComponent(url.searchParams.get('url') || '');
+    const width = url.searchParams.get('w') || '256';
+    const quality = url.searchParams.get('q') || '75';
+
+    console.log('[Middleware] 原始图片 URL:', originalImageUrl);
+    console.log(`[Middleware] 处理参数 width=${width} quality=${quality}`);
+
+    // 缓存检查
+    if (invalidUrlCache.has(originalImageUrl)) {
+      console.log(`[Middleware] 缓存命中无效 URL: ${originalImageUrl}`);
+      console.log(`[Middleware] 准备重定向到默认图片 (${DEFAULT_IMAGE})`);
+      return redirectToDefault(request, width, quality);
+    }
+
+    // 图片验证流程
+    try {
+      console.log(`[Middleware] 开始验证图片是否存在: ${originalImageUrl}`);
+      const isValid = await verifyImageExists(originalImageUrl);
+      
+      if (!isValid) {
+        console.log(`[Middleware] 图片不可用，加入缓存: ${originalImageUrl}`);
+        invalidUrlCache.add(originalImageUrl);
+        return redirectToDefault(request, width, quality);
+      }
+      
+      console.log(`[Middleware] 图片验证通过: ${originalImageUrl}`);
+    } catch (error:any) {
+      console.error(`[Middleware] 验证过程发生异常: ${error}`);
+      console.log(`[Middleware] 将 URL 加入缓存: ${originalImageUrl}`);
+      invalidUrlCache.add(originalImageUrl);
+      return redirectToDefault(request, width, quality);
+    }
+  }
+
+  return NextResponse.next();
+}
+
+async function verifyImageExists(url: string) {
+  console.log(`[ImageCheck] 发送 HEAD 请求检查: ${url}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    console.log(`[ImageCheck] 请求超时: ${url}`);
+    controller.abort();
+  }, 3000);
+
+  try {
+    const response = await fetch(url, { 
+      method: 'HEAD',
+      signal: controller.signal
+    });
+    
+    console.log(`[ImageCheck] 收到响应状态码: ${response.status} (${url})`);
+    return response.ok;
+  } catch (error:any) {
+    console.error(`[ImageCheck] 请求失败: ${error.message} (${url})`);
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function redirectToDefault(request: Request, width: string, quality: string) {
+  console.log(`[Redirect] 生成默认图片参数 width=${width} quality=${quality}`);
+  
+  const params = new URLSearchParams({
+    url: DEFAULT_IMAGE,
+    w: width,
+    q: quality,
+  });
+
+  const redirectUrl = new URL(`/_next/image?${params.toString()}`, request.url);
+  console.log(`[Redirect] 重定向至: ${redirectUrl.href}`);
+  
+  const response = NextResponse.redirect(redirectUrl);
+  response.headers.set('Content-Type', 'image/jpeg');
+  return response;
+}
+
+// middleware.ts
+export const config = {
+  // ✅ 使用正则表达式匹配所有 /_next/image 请求
+  matcher: [
+    { 
+      source: '/(_next/image|_next/static/image.*)', 
+      regex: '^(?:.*(?:/_next/image|/_next/static/image).*)$' 
+    }
+  ]
+};
+

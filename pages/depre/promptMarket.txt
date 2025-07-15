@@ -1,0 +1,135 @@
+import { AnimatePresence, motion } from "framer-motion";
+import { NextPage } from "next";
+import Head from "next/head";
+import { useEffect, useState } from "react";
+import { UploadDropzone } from "react-uploader";
+import { Uploader, UploadWidgetLocale } from "uploader";
+import { useSession, signIn } from "next-auth/react";
+import useSWR from "swr";
+import { Rings } from "react-loader-spinner";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { Toaster, toast } from "react-hot-toast";
+import { Prompt } from "@prisma/client";
+import { getServerSession } from "next-auth";
+
+import { authOptions } from "../pages/api/auth/[...nextauth]";
+import prisma from "../lib/prismadb";
+
+import { CompareSlider } from "../components/CompareSlider";
+import Footer from "../components/Footer";
+import Header from "../components/Header";
+import LoadingDots from "../components/LoadingDots";
+import ResizablePanel from "../components/ResizablePanel";
+import Toggle from "../components/Toggle";
+import { showPrompt} from "../components/Genhis";
+import LoginPage from "../components/LoginPage";
+import Pagination from '../components/Pagination';
+import Image from "../components/wrapper/Image";
+
+import { config } from "../utils/config";
+import {callAPI} from "../utils/apiUtils";
+import * as fu from "../utils/fileUtils";
+import * as monitor from "../utils/monitor";
+
+
+
+
+export default function promptMarket({ config }: { config: any }) {
+    
+    //const [loading, setLoading] = useState<boolean>(false);
+    //const [restoredLoaded, setRestoredLoaded] = useState<boolean>(false);
+    //const [error, setError] = useState<string | null>(null);
+    
+    const fetcher = (url: string) => fetch(url).then((res) => res.json());
+    const { data, mutate } = useSWR("/api/remaining", fetcher);
+    const { data: session, status } = useSession();
+
+    const router = useRouter();
+    const channel = router?.query?.channel as string;
+    
+    const [promptPageCount, setPromptPageCount] = useState<number>(0);
+    const promptPageSize = 24;
+    const [promptCurrentPage, setPromptCurrentPage] = useState<number>(1);
+    const [prompts, setPrompts] = useState<any[]>([]);    
+
+    async function gotoPromptPage(page:number){
+        const res = await callAPI("/api/createPrompt", 
+                                  {cmd:"GOTOPAGE", pageSize:promptPageSize, currentPage:page, channel });
+        if (res.status != 200) {
+            alert(res.result);
+        }else{
+            setPromptCurrentPage(page);
+            setPromptPageCount(res.result.pageCount);
+            setPrompts(res.result.prompts || []);
+        }
+    }
+
+    useEffect(() => {
+        gotoPromptPage(1);
+    }, []); // 空数组表示只在组件挂载时执行一次      
+
+
+    if(status == "authenticated" || status == "unauthenticated" ){ // 这样做只是为了让页面渲染动态执行
+  //  if(status == "authenticated"){ 
+    
+        return (
+            <div className="flex flex-col items-center justify-center">
+                <Header config={config}/>
+                
+                <main>
+                    <h1 className="title-main">
+                        <span>创意集市</span> 
+                    </h1>
+                    
+                    <p className="text-white  sm:px-2 px-1 sm:py-2 py-1 text-center">
+                        每个提示词都是一个小创意： {" "}
+                        <Link
+                            href="/createPrompt"
+                            className="font-semibold text-gray-200 underline underline-offset-2 hover:text-green transition" >
+                            试试我的创意。
+                        </Link>
+                    </p>
+                    
+                    <div className="w-full flex flex-col justify-between items-center">
+                        <div className="w-full items-center sm:pt-2 pt-4 flex sm:flex-row px-3 space-y-3 sm:mb-0 mb-3">
+                            <div className="w-full flex flex-col space-y-10 mt-4 mb-4 pt-2 rounded-xl items-center space-x-2">
+                                <div className="w-full grid grid-flow-row-dense grid-cols-2 gap-3 sm:grid-cols-8 items-center">
+                                    {prompts?.map((m) => (
+                                        m.channel == "PORTRAIT" ? 
+                                            showPrompt(m, (p:any) => {window.open("/superCamera?promptApp=" + m.id)}) : 
+                                            showPrompt(m)
+                                    ))}
+                                </div>
+                                <Pagination pageCount={promptPageCount} currentPage={promptCurrentPage}  
+                                    onPageChange={(page) => {
+                                        gotoPromptPage(page);
+                                    }}  />                             
+                            </div>
+                        </div>                
+                    </div>
+                
+                </main>
+                
+                <Footer />
+            </div>
+        );
+    }else{
+        return ( <LoginPage config={config}/> );
+    } 
+ 
+};
+
+
+export async function getServerSideProps(ctx: any) {
+    
+    //const session = await getServerSession(ctx.req, ctx.res, authOptions);
+    //const isLogin = session && session.user  && session.user.email ? true : false;
+   monitor.logUserRequest(ctx);
+
+    return {
+        props: {
+            config
+        },
+    };
+}      

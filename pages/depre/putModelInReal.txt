@@ -1,0 +1,311 @@
+import { NextPage } from "next";
+import Head from "next/head";
+import { useEffect, useState } from "react";
+import React from 'react';
+import { useSession, signIn } from "next-auth/react";
+import useSWR from "swr";
+import { Rings } from "react-loader-spinner";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { Toaster, toast } from "react-hot-toast";
+import { Room } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import TextareaAutosize from "react-textarea-autosize";
+
+import { authOptions } from "../pages/api/auth/[...nextauth]";
+import prisma from "../lib/prismadb";
+import {ZipData} from "./api/processImage";
+import { GenerateResponseData } from "./api/generate";
+
+import { CompareSlider } from "../components/CompareSlider";
+import Footer from "../components/Footer";
+import Header from "../components/Header";
+import ResizablePanel from "../components/ResizablePanel";
+import Toggle from "../components/Toggle";
+import { showModel} from "../components/Genhis";
+import LoginPage from "../components/LoginPage";
+import LoadingDots from "../components/LoadingDots";
+import LoadingRing from "../components/LoadingRing";
+import DropDown from "../components/DropDown";
+import Uploader, {mimeTypes} from "../components/Uploader";
+import ComboSelector from "../components/ComboSelector";
+import ImageCanvas from "../components/ImageCanvas";
+import ModelSelector from "../components/ModelSelector";
+import PriceTag from "../components/PriceTag";
+import LoadingButton from "../components/LoadingButton";
+import MessageZone from "../components/MessageZone";
+import StartButton from "../components/StartButton";
+import ResultButtons from "../components/ResultButtons";
+import AutoSizeImage from "../components/AutoSizeImage";
+import FormLabel from "../components/FormLabel";
+import PromptArea from "../components/PromptArea";
+import Image from "../components/wrapper/Image";
+
+import * as ru from "../utils/restUtils";
+import { config } from "../utils/config";
+import * as debug from "../utils/debug";
+import {callAPI2} from "../utils/apiUtils";
+import * as monitor from "../utils/monitor";
+import * as fu from "../utils/fileUtils";
+
+
+export default function putModelInReal({ defaultImage,  config }: { defaultImage: Room, config:any }) {
+
+    const [sideBySide, setSideBySide] = useState<boolean>(false);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [restoredLoaded, setRestoredLoaded] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
+    const [restoredImage, setRestoredImage] = useState<string | null>(null);
+    const [restoredId, setRestoredId] = useState<string | null>(null);
+    const [image, setImage] = useState<string>("");
+    const [targetRect, setTargetRect] = useState<any>();
+    const [prompt, setPrompt] = useState("");
+    const [imageWidth, setImageWidth] = useState<number>(0);
+    const [imageHeight, setImageHeight] = useState<number>(0);
+
+    const router = useRouter();
+    const inpaintType = router.query.inpaintType as string || "inpaint";
+    
+    const fetcher = (url: string) => fetch(url).then((res) => res.json());
+    const { data, mutate } = useSWR("/api/remaining", fetcher);
+    const { data: session, status="authenticated"} = useSession();
+    const [lora, setLora] = useState<any>();
+    const [title, setTitle] = useState<string>(router.query.title as string || "分身入景");
+    const [strength, setStrength] = useState<number>(90);
+
+    
+    useEffect(() => {
+        if(defaultImage?.outputImage){
+            fu.aliyunImageRestrictResize(defaultImage.outputImage).then((result)=>{
+                if(result){
+                    setImage(result);
+                }
+            });
+        }
+    }, []); // 空数组表示只在组件挂载时执行一次
+    
+    async function generate() {
+        if(!image){
+            return alert("请先选择或上传一张照片！");
+        }
+        if(!targetRect || targetRect.width<50 || targetRect.height<50){
+            return alert("请先在画面上选择一个宽和高都大于50个像素的区域放置虚拟分身！");
+        }
+        if(!lora){
+            return alert("请先选择一个虚拟分身人物！");
+        }
+        if(!prompt){
+            return alert("请描绘一下分身在场景中的姿态！");
+        }
+        
+        const res = await callAPI2(
+            "/api/workflowAgent2", 
+            {
+                cmd:"putModelInReal", 
+                params:{
+                    image, 
+                    width:imageWidth,
+                    height:imageHeight,     
+                    target_rect:targetRect,                    
+                    prompt,
+                    lora: lora?.code,
+                    loraCover: lora?.coverImg
+                }
+            },
+            title,
+            "IMAGE",
+            (status:boolean)=>{setLoading(status)},
+            (res:any)=>{
+                mutate();
+                setRestoredImage(res.result.generated);
+                setRestoredId(res.result.genRoomId);                                      
+            }
+        );                    
+    }
+
+    let num = 1;
+
+    if(status == "authenticated" || status == "unauthenticated"){
+        
+        return (
+            <div className="flex flex-col items-center justify-center bg-loraLab min-h-screen">
+                <Head>
+                    <title>{title}</title>
+                </Head>                
+                <Header config={config} title={title} subTitle={"您可以把虚拟分身放到任意真实或虚拟的场景照片中"}/>
+                
+                <main>
+                    <div className="w-full flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0 items-start justify-between p-2 mt-2">
+
+                        <div className="w-full flex flex-1 flex-col rounded-lg min-h-lvh mr-2 items-center justify-start border border-1 border-gray-300 border-dashed">
+                            <div className={`${restoredLoaded ? "mt-6 -ml-8" : "hidden"}`}>
+                                <Toggle className={`${restoredLoaded ? "mb-6" : "hidden"}`}  sideBySide={sideBySide}
+                                    setSideBySide={(newVal) => setSideBySide(newVal)}
+                                    />
+                            </div>    
+                            
+                            {restoredLoaded && sideBySide && (
+                            <CompareSlider
+                                original={image!}
+                                restored={restoredImage!}
+                                />
+                            )}                              
+
+                            {!sideBySide && (
+                            <div className={"w-full flex flex-col sm:flex-row space-y-5 sm:space-y-0 sm:space-x-5 justify-center " + (loading ? "items-center" : "items-start") }>
+                                <div className="w-full sm:w-1/2 space-y-4 flex flex-col items-center justify-start">
+                                    <FormLabel number={`${num++}`} label={"原始照片"}/>
+                                    {image && (
+                                    <ImageCanvas
+                                        imageURL={image}
+                                        detectFace={false}                                        
+                                        className="rounded-2xl sm:mt-0 mt-2 w-full h-auto"
+                                        onSelectRect = {(rect:any) => {
+                                            // alert(`x:${x},y:${y},w:${width},h:${height}`);                                        
+                                            setTargetRect(rect);
+                                        } }    
+                                        onResizeCanvas = {(width, height) => {
+                                            setImageWidth(width);
+                                            setImageHeight(height);
+                                        }}
+                                        />
+                                    )}
+                                    {!loading && (
+                                    <ComboSelector onSelect = {(newFile) => {
+                                        setImage(newFile);
+                                        setRestoredImage(null);
+                                        setRestoredLoaded(false);
+                                        setError(null); 
+                                    }
+                                    } />
+                                    )}
+
+                                </div>                                     
+
+                                <div className={ "w-full sm:w-1/2 space-y-4 flex flex-col justify-start " + (loading ? "items-center" : "items-start") }>                                                
+                                    {loading && !error && !restoredImage && (
+                                    <LoadingRing/>
+                                    )}
+                                    
+                                    {restoredImage && restoredId && !loading && !error && (
+                                    <div className="w-full flex flex-col items-center space-y-4 ">
+                                        <FormLabel label="结果照片"/>
+                                        <AutoSizeImage
+                                            src={restoredImage}
+                                            imageId={restoredId}
+                                            onLoadingComplete={() => setRestoredLoaded(true)}
+                                            />                                        
+                                        {restoredImage && restoredId && (
+                                        <ResultButtons mediaId={restoredId} mediaURL={restoredImage}/>
+                                        )}
+                                    </div>                                                                
+                                    )}
+                                </div>
+                                
+                            </div>
+                            )}
+                            
+                            {error && (
+                            <MessageZone message={error} messageType="ERROR"/>
+                            )}     
+    
+                        </div>                        
+                        
+
+                        
+                        <div className="page-tab px-4 ml-2 pb-20 rounded-lg space-y-4 w-full max-w-lg">                        
+                            <div className="space-y-4 w-full max-w-lg mb-5">
+                               
+                                <FormLabel number={`${num++}`} label="选择虚拟分身"/>                                
+                                <div className="w-full flex flex-col items-center">
+                                    {lora && lora.coverImg && (
+                                        <Image alt="图片素材" src={lora.coverImg} className="rounded-2xl relative sm:mt-0 mt-2 w-full h-auto sm:h-96 sm:w-auto" />
+                                    )}     
+                                </div>
+
+                                <div className="w-full flex flex-col items-center">
+                                    <ModelSelector onSelect = {(newFile) => {
+                                        setLora(newFile);
+                                    }} title="选择虚拟分身" modelType="LORA" channel="FASHION"  />    
+                                    <input type="text" value = {lora?.name || ""} className="w-full text-black text-sm bg-gray-400 border-1 border-black border"  readOnly />                                
+                                </div>                                    
+
+                                <FormLabel number={`${num++}`} label="描述人物的姿态"/>                                                                    
+                                <PromptArea
+                                    hotWords="PUT_MODEL"
+                                    hasAdvanceButton={false}
+                                    userPrompt={prompt}
+                                    onUserPromptChange={(up) => setPrompt(up) }
+                                    />                                      
+                            </div>
+        
+                            <div className= "flex flex-col space-y-2 items-center">
+                                {status === "authenticated" && data && (
+                                <PriceTag config={config}  />
+                                )}
+                                
+                                {loading ? (
+                                <LoadingButton/>
+                                ):(
+                                <StartButton config={config} 
+                                    onStart={() => {
+                                        setRestoredImage(null);
+                                        setRestoredLoaded(false);
+                                        setError(null);   
+                                        setSideBySide(false);
+                                        generate();
+                                    }}/>
+                                )}
+                            </div>
+                            
+                            <div className="w-full max-w-lg flex flex-row items-center justify-center">
+                                <span>想要定制自己的虚拟分身？</span>
+                                <Link href="/createLoRA?title=虚拟分身&channel=FASHION" className="underline underline-offset-2">创建虚拟分身</Link>
+                            </div>   
+                            <div className="w-full max-w-lg flex flex-row items-center justify-center">
+                                <span>要仔细挑选心仪的虚拟分身？</span>
+                                <Link href="modelMarket?channel=FASHION&title=虚拟分身#" className="underline underline-offset-2">虚拟分身</Link>
+                            </div>   
+                            
+                        </div>
+
+                    </div>                          
+            
+                </main>
+                <Footer />
+            </div>
+        );
+    }else{
+        return(
+            <LoginPage config={config}/>
+        );
+    }   
+};
+
+    
+      
+export async function getServerSideProps(ctx: any) {
+    const session = await getServerSession(ctx.req, ctx.res, authOptions);
+    let imgId = ctx?.query?.roomId;
+    
+    // 如果用户没登录显示最热门的，如果已经登录显示最新的
+    const isLogin = session && session.user  && session.user.email ? true : false;
+    let defaultImage = null;
+    
+    if(imgId){
+        defaultImage = await prisma.room.findUnique({
+            where: {
+                id: imgId,
+            },
+        });
+    }
+
+    monitor.logUserRequest(ctx, session);
+    return {
+        props: {
+            defaultImage,
+            config
+        },
+    };
+  
+}            

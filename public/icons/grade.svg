@@ -1,0 +1,32 @@
+<svg width="200" height="200" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <!-- 外层圆环 -->
+    <circle cx="50" cy="50" r="45" fill="url(#outerGradient)" />
+
+    <!-- 内层圆 -->
+    <circle cx="50" cy="50" r="40" fill="url(#innerGradient)" />
+
+    <!-- 星形 -->
+    <polygon points="50,30 56,45 72,45 60,55 65,70 50,62 35,70 40,55 28,45 44,45" 
+        fill="url(#starGradient)" />
+
+    <!-- 高光效果 -->
+    <path d="M40,30 C45,25, 55,25, 60,30" fill="none" stroke="white" stroke-width="2" opacity="0.3" />
+    <path d="M30,50 C30,45, 70,45, 70,50" fill="none" stroke="white" stroke-width="2" opacity="0.3" />
+    <path d="M40,70 C45,75, 55,75, 60,70" fill="none" stroke="white" stroke-width="2" opacity="0.3" />
+
+    <!-- 渐变定义 -->
+    <defs>
+        <radialGradient id="outerGradient" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#FFD700"/>
+            <stop offset="100%" stop-color="#B8860B"/>
+        </radialGradient>
+        <radialGradient id="innerGradient" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#FFD700" />
+            <stop offset="100%" stop-color="#FFA500"/>
+        </radialGradient>
+        <radialGradient id="starGradient" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#FFF9B1" />
+            <stop offset="100%" stop-color="#FFD700" />
+        </radialGradient>
+    </defs>
+</svg>

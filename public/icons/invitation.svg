@@ -1,0 +1,15 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <!-- 图标的背景边框 -->
+    <rect x="1" y="1" width="30" height="30" rx="4" ry="4" fill="none" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- 邀请信封 -->
+    <path d="M6,10 L26,10 L26,22 L6,22 Z" fill="#bbbbbb"/>
+    <path d="M6,10 L16,18 L26,10" fill="none" stroke="#ffffff" stroke-width="2"/>
+    
+    <!-- 邀请标志 -->
+    <polygon points="16,14 14,12 14,16" fill="#ffffff"/>
+
+    <!-- 传送箭头 -->
+    <path d="M20,16 L26,16 L26,12" fill="none" stroke="#cccccc" stroke-width="2" stroke-linecap="round" />
+    <polygon points="26,12 24,14 26,16" fill="#cccccc"/>
+</svg>

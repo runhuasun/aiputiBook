@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Purchase" ADD COLUMN "payMoney" int4 NOT NULL DEFAULT 0,
+ADD COLUMN "payMethod" TEXT NOT NULL DEFAULT 'UNKNOWN';
+
+

@@ -1,0 +1,510 @@
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  directUrl         = env("DIRECT_DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String     @id @default(cuid())
+  name          String?
+  email         String?    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime?  @default(now())
+  actors        String  @default("user")
+  password      String
+  invitedbycode String?
+  model         String?
+  phone         String?  @unique
+  weixinId      String?  @unique
+  fans          Int     @default(0)
+  desc          String?
+  credits       Int        @default(0)  
+  boughtCredits Int        @default(0) 
+  incomeCredits Int        @default(0)
+  usedCredits    Int       @default(0)
+  grade          Int       @default(0)
+  source          String?
+
+  accounts      Account[]  
+  sessions      Session[]
+  rooms         Room[]    
+  purchases     Purchase[]
+  invitcodes    Invitation[]
+  models        Model[]
+  prompts       Prompt[]
+  actions       Action[]
+  talks         Talk[]
+  tasks         Task[]
+  vectors       Vector[]
+  applications    Application[]
+  rawdatas      Rawdata[]
+  appUserConfigs AppUserConfig[]
+  shareQRs      ShareQR[]
+  vDHs          VDH[]
+  albums        Album[]
+  userFiles     UserFile[]
+  creditItems   CreditItem[]
+}
+
+model Invitation {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code         String
+  authTime     DateTime @default(now())
+  expTime      DateTime @default(now())
+}
+
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Room {
+  id          String   @id @default(cuid())
+  replicateId String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  preRoomId   String?
+  preRoom     Room?    @relation("PreviousRoom", fields: [preRoomId], references: [id])
+  nextRooms   Room[]   @relation("PreviousRoom")  // 反向关系字段
+
+  inputImage  String 
+  outputImage String
+  zoomInImage String?
+  
+  aiservice   String?
+  predicturl  String?
+  bodystr     String?
+  
+  prompt      String?
+  seed        String?
+  desc        String?
+  audit       String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  func        String    @default("text2img")
+  model       String    @default("no model")
+  usedCredits Int       @default(0)
+
+  sysScore Int          @default(0)
+  likes Int             @default(0)
+
+  price       Int       @default(10)
+  viewTimes   Int       @default(0)
+  dealTimes   Int       @default(0)
+  totalIncome Int       @default(0)
+  ownerIncome Int       @default(0)
+
+  resultType  String    @default("UNKNOWN")
+  access      String    @default("PUBLIC")
+  
+  status      String  @default("CREATING")
+  callbacked  String    @default("N")
+
+  albums  Album[]
+  roomAlbums AlbumRoom[]
+
+  @@unique([replicateId, userId])
+}
+
+model Talk {
+  id          String   @id @default(cuid())
+  replicateId String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inputMsg    String 
+  outputMsg   String
+  
+  aiservice   String?
+  predicturl  String?
+  bodystr     String?
+  
+  promptId    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  func        String    @default("chat")
+  model       String
+  usedCredits Int       @default(0)
+  usedTokens  Int       @default(0)
+
+  access      String    @default("PUBLIC")
+  
+  status      String  @default("CREATING")
+}
+
+
+model Purchase {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creditAmount Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  payMoney     Int      @default(0)
+  payMethod    String   @default("UNKNOWN")
+  status       String   @default("START")
+}
+
+model Model {
+  id          String  @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references:[id], onDelete: Cascade)
+  code        String    
+  name        String
+
+  func        String
+  theme       String    @default("face")
+  channel     String    @default("PUBLIC")
+  labels       String    @default("other")
+
+  imgRecogHint   String?  
+  createTime  DateTime  @default(now())
+  finishTime  DateTime  @updatedAt
+  trainSrv    String
+  status      String
+  proId       String
+  usedCredits Int       @default(0)
+  access      String
+  url         String?
+  weights     String?
+  safetensors  String?
+
+  proMsg      String?
+  price       Int       @default(10)
+  coverImg    String
+  runtimes    Int       @default(0)
+  totalIncome Int       @default(0)
+  ownerIncome Int       @default(0)
+  sysScore Int          @default(0)
+  likes Int             @default(0)
+  desc        String    @default("")
+  callbacked  String    @default("N")
+
+  datasets    String?
+  language    String    @default("zh")
+  aiservice   String?
+  baseModel   String?
+
+  params      String?
+  usedTokens  Int       @default(0)
+  vectors        Vector[]
+  applications    Application[]
+  rawdatas     Rawdata[]
+  modelRawdatas ModelRawdatas[]
+
+  // 添加反向关系字段
+  vdh_pModel VDH[]     @relation("VDH_pModelId_fkey")
+  vdh_cModel VDH[]     @relation("VDH_cModelId_fkey")
+  vdh_vModel VDH[]     @relation("VDH_vModelId_fkey")
+
+  @@unique([code])
+  @@unique([name])  
+}
+
+model Vector{
+  id          String  @id @default(cuid())
+  modelId     String
+  model       Model      @relation(fields: [modelId], references:[id], onDelete: Cascade)
+  userId    String?  
+  user      User?        @relation(fields: [userId], references:[id], onDelete: Cascade)
+  key       String
+  value     String
+  content   String?
+  type      String  @default("TEXT")
+  status    String  @default("CREATE")
+  vecVal    Float[]  @default([])
+  scope     String    @default("MODEL")
+  createdAt   DateTime  @default(now())
+  rawdataId  String?  
+  rawdata      Rawdata?    @relation(fields: [rawdataId], references:[id], onDelete: Cascade)
+
+  @@unique([modelId, userId, scope, key, status], name:"model_user_scope_key_status")
+
+}
+
+model Prompt {
+  id          String  @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references:[id], onDelete: Cascade)
+  code        String    
+  name        String
+  func        String
+  formular    String
+  createTime  DateTime  @default(now())
+  updateTime  DateTime  @updatedAt
+  access      String
+  price       Int       @default(10)
+  coverImg    String
+  runtimes    Int       @default(0)
+  totalIncome Int       @default(0)
+  ownerIncome Int       @default(0)
+  sysScore Int          @default(0)
+  likes Int             @default(0)  
+  desc        String    @default("")
+  status      String    @default("CREATE")
+  channel     String    @default("PUBLIC")
+  
+  @@unique([code])
+  @@unique([name])  
+}
+
+model Action{
+  id          String  @id @default(cuid())
+  type        String
+  createTime  DateTime  @default(now())
+  updateTime  DateTime  @default(now())
+  status      String
+  fromUserId  String
+  user        User      @relation(fields: [fromUserId], references:[id], onDelete: Cascade)
+  targetType  String
+  targetId    String
+  desc        String?
+}
+
+model Task{
+  id          String  @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references:[id], onDelete: Cascade)
+  func        String
+  createTime     DateTime @default(now())
+  updateTime     DateTime @default(now())
+  input       String
+  params      String?
+  output      String?
+  message     String?
+  status      String @default("CREATE")
+  usedCredits  Int  @default(0)
+  usedTokens   Int  @default(0)
+}
+
+model Application {
+    id         String  @id @default(cuid())
+    name       String
+    type       String
+    createTime DateTime  @default(now())
+    updateTime DateTime  @updatedAt
+    status     String    @default("CREATE")            
+  userId        String
+  user          User      @relation(fields: [userId], references:[id], onDelete: Cascade)
+    config     String
+    settlement String    @default("B2A")
+    modelId     String
+  model         Model      @relation(fields: [modelId], references:[id], onDelete: Cascade)
+    desc        String?   
+    shareQRs    ShareQR[]
+    appUserConfigs AppUserConfig[]
+}
+
+model Rawdata {
+    id         String  @id @default(cuid())
+    name       String
+    type       String
+    createTime DateTime  @default(now())
+    updateTime DateTime  @updatedAt
+    status     String    @default("CREATE")            
+    userId        String
+    user          User      @relation(fields: [userId], references:[id], onDelete: Cascade)
+    desc        String
+    url          String
+    audit       String?
+    models       Model[]
+    vectors      Vector[]
+    modelRawdatas ModelRawdatas[]
+}
+
+model ModelRawdatas {
+    id         String  @id @default(cuid())
+    modelId    String
+    rawdataId  String
+
+    createTime DateTime  @default(now())  
+    status     String    @default("CREATE")   
+    model      Model      @relation(fields: [modelId], references:[id], onDelete: Cascade)
+  rawdata      Rawdata    @relation(fields: [rawdataId], references:[id], onDelete: Cascade)
+  @@unique([modelId, rawdataId], name: "modelId_rawdataId")
+}
+
+model AppUserConfig {
+    id          String  @id @default(cuid())
+    userId      String
+    appId       String
+    config      String
+    createTime  DateTime  @default(now())  
+    updateTime  DateTime  @updatedAt
+    status      String    @default("CREATE")   
+    user        User    @relation(fields: [userId], references:[id], onDelete: Cascade)
+    app         Application    @relation(fields: [appId], references:[id], onDelete: Cascade)
+  @@unique([userId, appId], name: "appId_userId")
+}
+
+model ShareQR {
+  id            String @id @default(cuid())
+  userId        String
+  appId         String
+  message       String
+  createTime    DateTime @default(now())
+  expireTime    DateTime @default(now())
+
+  app           Application  @relation(fields: [appId], references: [id], onDelete: Cascade)
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+}
+ 
+model VDH{
+  id  String @id @default(cuid())
+  code  String
+  name  String
+  gender  String
+  birthday  DateTime
+
+  info  String
+  desc  String
+  label  String
+
+  score  Int  @default(0)
+  likes  Int  @default(0)
+  price  Int  @default(0)
+  access  String
+  channel     String    @default("PUBLIC")
+
+  
+  pModelId  String
+  cModelId  String
+  vModelId  String
+  pModel    Model    @relation("VDH_pModelId_fkey", fields: [pModelId], references: [id], onDelete: Cascade)
+  cModel    Model    @relation("VDH_cModelId_fkey", fields: [cModelId], references: [id], onDelete: Cascade)
+  vModel    Model    @relation("VDH_vModelId_fkey", fields: [vModelId], references: [id], onDelete: Cascade)
+
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createTime  DateTime  @default(now())  
+  updateTime  DateTime  @updatedAt  
+  
+  status  String
+
+  @@unique([code])
+}  
+
+model Album{
+    id         String  @id @default(cuid())
+    code       String
+    name       String
+    type       String
+    score      Int          @default(0)
+    coverImg   String
+    createTime DateTime  @default(now())
+    updateTime DateTime  @updatedAt
+    status     String    @default("CREATED")            
+    userId        String
+    user          User      @relation(fields: [userId], references:[id], onDelete: Cascade)
+    desc        String?
+    access          String @default("PRIVATE")
+
+    rooms       Room[]
+    albumRooms AlbumRoom[]
+}
+
+
+model AlbumRoom {
+    id         String  @id @default(cuid())
+    createTime DateTime  @default(now())
+    updateTime DateTime  @updatedAt
+    albumId    String
+    roomId  String
+    status     String    @default("CREATED")   
+    score    Int  @default(0)
+
+    album      Album      @relation(fields: [albumId], references:[id], onDelete: Cascade)
+    room      Room    @relation(fields: [roomId], references:[id], onDelete: Cascade)
+}
+
+model UserFile {
+    id         String  @id @default(cuid())
+    createTime DateTime  @default(now())
+    updateTime DateTime  @updatedAt
+    url        String
+    type       String   
+    status     String    @default("CREATED")
+    access     String    @default("PRIVATE")
+    desc       String?
+    audit       String?
+    score      Int       @default(0)
+    userId     String
+    user       User      @relation(fields: [userId], references:[id], onDelete: Cascade)
+} 
+
+model SysTrace {
+    id         String  @id @default(cuid())
+    createTime DateTime  @default(now())
+    ip        String?
+    path        String?
+    userId      String?
+    name        String?
+    email       String?
+    operation        String?
+    desc        String?
+    website        String?
+}
+
+model CreditItem {
+    id         String  @id @default(cuid())
+    amount    Int  @default(0)
+    createTime DateTime  @default(now())
+    userId    String
+    operation  String
+    objectId  String?
+    desc      String?
+
+    user       User      @relation(fields: [userId], references:[id], onDelete: Cascade)
+}
+
+model DbLog {
+    id             String  @id @default(cuid())
+    level          String
+    createTime     DateTime  @default(now())
+    target        String?
+    targetId      String?
+    pos           String?
+    content       String?
+}

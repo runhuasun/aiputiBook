@@ -1,0 +1,12 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <!-- 图标的背景边框 -->
+    <rect x="1" y="1" width="30" height="30" rx="4" ry="4" fill="none" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- 文件形状 -->
+    <rect x="8" y="8" width="16" height="20" fill="#bbbbbb" rx="2" ry="2"/>
+    <!-- 文件顶部的折角 -->
+    <polygon points="16,8 16,12 20,12 20,8" fill="#ffffff"/>
+
+    <!-- 上传箭头 -->
+    <polygon points="16,14 12,18 14,18 14,22 18,22 18,18 20,18" fill="#ffffff"/>
+</svg>

@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Room" ADD COLUMN "usedCredits" Int4 NOT NULL DEFAULT 0,  --图片消耗的点数
+ADD COLUMN "status" TEXT NOT NULL DEFAULT 'CREATING';    -- 状态CREATING, FAILED, SUCCESS

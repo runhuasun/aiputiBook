@@ -1,0 +1,327 @@
+import Head from "next/head";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+import prisma from "../../lib/prismadb";
+import { Model, Rawdata, Vector, ModelRawdatas, User } from "@prisma/client";
+import { RoomGeneration } from "../../components/RoomGenerator";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../api/auth/[...nextauth]";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import Footer from "../../components/Footer";
+import Header from "../../components/Header";
+import React from 'react';
+import { config } from "../../utils/config";
+
+
+export default function migration() {
+    const { data: session } = useSession();
+    const [modelId, setModelId] = useState("");
+    const [modelCode, setModelCode] = useState("");
+
+    async function updateVoiceModel(){
+        const res = await fetch("/api/testAPI", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+              cmd: "updateVoiceModel",
+          }),
+        });
+        const result = await res.json();
+        if(result){
+            alert(res.status);
+            alert(result);
+        }
+    }
+
+
+    
+    async function migrateDataset(){
+        const res = await fetch("/api/testAPI", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ 
+                cmd: "migrateDataset",
+            }),
+        });
+        
+        const result = await res.json();
+    }    
+
+        
+    async function migrateModel(){
+        const res = await fetch("/api/testAPI", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+              cmd: "migrateModel",
+              modelId: modelId,
+              modelCode: modelCode
+          }),
+        });
+        
+        const result = await res.json();
+        if(result){
+            alert(res.status);
+            alert(result);
+        }
+    }
+
+    async function removeRawdata(){
+        const res = await fetch("/api/testAPI", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+              cmd: "removeRawdata",
+              modelId: "clmf3dkzp1n2dkuy57xy8k5ds",
+              rawdataId: "clmzu8ydf07hzku86wj42yrjz"
+          }),
+        });
+        
+        const result = await res.json();
+        if(result){
+            alert(res.status);
+            alert(result);
+        }
+    }
+
+    async function clearInputs(){
+        const res = await fetch("/api/testAPI", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ 
+                cmd: "clearInputs",
+            }),
+        });
+
+        const result = await res.json();
+    }
+
+ 
+ async function moveModel(){
+
+     const res = await fetch("/api/testAPI", {
+         method: "POST",
+         headers: {
+             "Content-Type": "application/json",
+         },
+         body: JSON.stringify({ 
+             cmd: "moveModel",
+         }),
+     });
+     
+     const result = await res.json();
+
+ }
+
+ async function movePrompt(){
+
+     const res = await fetch("/api/testAPI", {
+         method: "POST",
+         headers: {
+             "Content-Type": "application/json",
+         },
+         body: JSON.stringify({ 
+             cmd: "movePrompt",
+         }),
+     });
+     
+     const result = await res.json();
+
+ }
+    
+ async function moveRoom(){
+
+     const res = await fetch("/api/testAPI", {
+         method: "POST",
+         headers: {
+             "Content-Type": "application/json",
+         },
+         body: JSON.stringify({ 
+             cmd: "moveRoom",
+         }),
+     });
+     
+     const result = await res.json();
+
+ }
+
+ async function moveRawData(){
+
+     const res = await fetch("/api/testAPI", {
+         method: "POST",
+         headers: {
+             "Content-Type": "application/json",
+         },
+         body: JSON.stringify({ 
+             cmd: "moveRawData",
+         }),
+     });
+     
+     const result = await res.json();
+
+ }
+
+ 
+ async function moveUser(){
+
+     const res = await fetch("/api/testAPI", {
+         method: "POST",
+         headers: {
+             "Content-Type": "application/json",
+         },
+         body: JSON.stringify({ 
+             cmd: "moveUser",
+         }),
+     });
+     
+     const result = await res.json();
+
+ }    
+
+    async function deleteUnavailableRooms(){
+         const res = await fetch("/api/testAPI", {
+             method: "POST",
+             headers: {
+                 "Content-Type": "application/json",
+             },
+             body: JSON.stringify({ 
+                 cmd: "clearBadRooms",
+             }),
+         });
+         
+        const result = await res.json();
+        if(result){
+            alert(res.status);
+            alert(result);
+        }
+    }
+    
+  return (
+    <div className="flex mx-auto w-full  flex-col items-center justify-center min-h-screen">
+      <Head>
+        <title>AI菩提</title>
+      </Head>
+      <Header config={config}/>
+
+      <main className="flex flex-1 w-full flex-col items-center justify-center text-center sm:px-4 px-0 py-6 background-gradient">
+          <button onClick={() => { deleteUnavailableRooms(); }}
+              className="bg-blue-500 rounded-full text-white font-medium px-4 py-2 mt-8 hover:bg-blue-500/80 transition"
+           >
+            删除无效的图片
+          </button>              
+
+          
+          <button onClick={() => { updateVoiceModel(); }}
+              className="bg-blue-500 rounded-full text-white font-medium px-4 py-2 mt-8 hover:bg-blue-500/80 transition"
+           >
+            更新声音模型
+          </button>              
+
+
+         <div className="py-10 space-x-5 flex flex-row" >
+           <button className="bg-blue-500 rounded-full text-white font-medium px-4 py-2 mt-8 hover:bg-blue-500/80 transition"
+              onClick={() => {
+                moveUser();
+              }} >
+             <span>移动用户头像到COS</span>
+          </button> 
+        </div>       
+       
+         <div className="py-10 space-x-5 flex flex-row" >
+           <button className="bg-blue-500 rounded-full text-white font-medium px-4 py-2 mt-8 hover:bg-blue-500/80 transition"
+              onClick={() => {
+                moveRawData();
+              }} >
+             <span>移动RawData中的训练文件到COS</span>
+          </button> 
+        </div>       
+       
+         <div className="py-10 space-x-5 flex flex-row" >
+           <button className="bg-blue-500 rounded-full text-white font-medium px-4 py-2 mt-8 hover:bg-blue-500/80 transition"
+              onClick={() => {
+                moveRoom();
+              }} >
+             <span>移动图片文件到COS</span>
+          </button> 
+        </div>
+       
+         <div className="py-10 space-x-5 flex flex-row" >
+           <button className="bg-blue-500 rounded-full text-white font-medium px-4 py-2 mt-8 hover:bg-blue-500/80 transition"
+              onClick={() => {
+                moveModel();
+              }} >
+             <span>移动模型文件到COS</span>
+          </button> 
+        </div>
+
+         <div className="py-10 space-x-5 flex flex-row" >
+           <button className="bg-blue-500 rounded-full text-white font-medium px-4 py-2 mt-8 hover:bg-blue-500/80 transition"
+              onClick={() => {
+                movePrompt();
+              }} >
+             <span>移动提示词应用的封面到COS</span>
+          </button> 
+        </div>          
+
+         <div className="py-10 space-x-5 flex flex-row" >
+           <button className="bg-blue-500 rounded-full text-white font-medium px-4 py-2 mt-8 hover:bg-blue-500/80 transition"
+              onClick={() => {
+                migrateDataset();
+              }} >
+             <span>迁移模型的数据集</span>
+          </button> 
+        </div>
+       
+         <div className="py-10 space-x-5 flex flex-row" >
+           <button className="bg-blue-500 rounded-full text-white font-medium px-4 py-2 mt-8 hover:bg-blue-500/80 transition"
+              onClick={() => {
+                clearInputs();
+              }} >
+             <span>清理1天前上传的图片</span>
+          </button> 
+        </div>
+          
+          
+          <div>迁移模型</div>
+          <span>模型ID</span>
+          <input type="text" className="input-main" 
+            value={modelId}
+            onChange={(e) => setModelId(e.target.value)}                      
+            />       
+          <span>模型Code</span>
+          <input type="text" className="input-main" 
+            value={modelCode}
+            onChange={(e) => setModelCode(e.target.value)}                      
+            />           
+           <button onClick={() => { migrateModel(); }}
+              className="bg-blue-500 rounded-full text-white font-medium px-4 py-2 mt-8 hover:bg-blue-500/80 transition"
+           >
+            迁移
+          </button>              
+
+
+
+           <button onClick={() => { removeRawdata(); }}
+              className="bg-blue-500 rounded-full text-white font-medium px-4 py-2 mt-8 hover:bg-blue-500/80 transition"
+           >
+            删除原始语料
+          </button>              
+
+
+          
+      </main>
+    </div>
+  );
+}
+

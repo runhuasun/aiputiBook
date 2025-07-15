@@ -1,0 +1,284 @@
+import { AnimatePresence, motion } from "framer-motion";
+import { NextPage } from "next";
+import Head from "next/head";
+import { useEffect, useState } from "react";
+import { UploadDropzone } from "react-uploader";
+import { Uploader, UploadWidgetLocale } from "uploader";
+import {channelType, channels, channelNames  } from "../utils/channels";
+import { useSession, signIn } from "next-auth/react";
+import useSWR from "swr";
+import { Rings } from "react-loader-spinner";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { Toaster, toast } from "react-hot-toast";
+
+import Image from "../components/wrapper/Image";
+import { CompareSlider } from "../components/CompareSlider";
+import Footer from "../components/Footer";
+import Header from "../components/Header";
+import LoadingDots from "../components/LoadingDots";
+import ResizablePanel from "../components/ResizablePanel";
+import Toggle from "../components/Toggle";
+
+import { authOptions } from "../pages/api/auth/[...nextauth]";
+import prisma from "../lib/prismadb";
+import { Prompt, Model, Room, User } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { showPrompt, showModel} from "../components/Genhis";
+import { config } from "../utils/config";
+import * as monitor from "../utils/monitor";
+
+
+export default function channel({ channel, creations, config }: { channel:string, creations: Creation[], config: any }) {
+
+  const [loading, setLoading] = useState<boolean>(false);
+  const [restoredLoaded, setRestoredLoaded] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  
+  const fetcher = (url: string) => fetch(url).then((res) => res.json());
+  const { data, mutate } = useSWR("/api/remaining", fetcher);
+  const { data: session, status } = useSession();
+
+  const router = useRouter();
+  const channelTitle = router.query.title ? router.query.title as string : channelNames.get(channel);
+  
+  const channelDesc = (channel == "FASHION") ? "现在大家都在AI写真馆拍影集，只要十张照片就可以做一个你的写真模型，汉服、唐装、礼服、婚纱都能一键生成写真"
+          : "快来看看AI艺术家们的新作品!";
+
+    
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <Head>
+        <title>{config.appName}</title>
+          <meta property="og:description" content={channelDesc} /> 
+          <meta property="og:title" content={config.appName + channelTitle + "馆"} />
+          <meta property="og:image" content={ `${config.RS}/channel/${channel}.jpg` } />    
+          <meta name="description" content={channelDesc} />        
+      </Head>
+ 
+      <Header config={config}/>
+      
+      <main className="flex flex-1 flex-col ">
+        <h1 className="title-main">
+          <span>{channelTitle}</span>
+        </h1>
+        {channel == "FASHION" && (
+            <button 
+             onClick={() => {
+                window.location.href="/createLoRA";
+              }}
+              className=" w-40 py-4 px-15 mt-8 text-sm rounded-full button-gold text-center items-center justify-center "
+            >
+            制作我的AI写真 
+          </button>     
+        )}
+        
+        
+        
+        {channel == "ARCH" && (
+        <div className="flex justify-between items-center w-full flex-row grid grid-flow-row-dense grid-cols-1 gap-1 sm:grid-cols-3">
+          
+          <Link className="flex justify-between items-center w-full flex-col " href="/dream?price=10">
+              <div className="flex flex-col items-left space-y-5 mt-4 mb-10">
+                <span
+                 className="flex max-w-fit items-center text-lg sm:text-1xl text-white justify-center sm:mt-5 mt-3 space-x-2 rounded-lg px-5 py-2 shadow-md hover:bg-blue-400 hover:text-white bg-white-600 transition"         >
+                AI变换装修
+               </span>
+              <div className="sm:mt-0 mt-1">
+                <Image
+                  alt="Original photo"
+                  src="http://fileserver.aiputi.cn/demo/deco.jpg"
+                  className="object-cover  rounded-2xl "
+                  width={768}
+                  height={512}
+                />
+              </div>
+            </div>
+          </Link>
+                                                          
+          <Link className="flex justify-between items-center w-full flex-col " href="/draft?price=10">
+            <div className="flex flex-col items-left space-y-5 mt-4 mb-10">
+            <span
+             className="flex max-w-fit items-center text-lg sm:text-1xl text-white justify-center sm:mt-5 mt-3 space-x-2 rounded-lg px-5 py-2 shadow-md hover:bg-blue-400 hover:text-white bg-white-600 transition"         >
+           AI草图变效果图
+           </span>
+
+            <div className="sm:mt-0 mt-1">
+              <Image
+                alt="Original photo"
+                src="http://fileserver.aiputi.cn/demo/draft.jpg"
+                className="object-cover  rounded-2xl "
+                width={768}
+                height={512}
+              />
+            </div>
+
+            </div>
+          </Link>
+                                                          
+          <Link className="flex justify-between items-center w-full flex-col " href="/garden?price=10">
+            <div className="flex flex-col items-left space-y-5 mt-4 mb-10">
+            <span
+             className="flex max-w-fit items-center text-lg sm:text-1xl text-white justify-center sm:mt-5 mt-3 space-x-2 rounded-lg px-5 py-2 shadow-md hover:bg-blue-400 hover:text-white bg-white-600 transition"         >
+            AI花园设计
+           </span>
+
+            <div className="sm:mt-0 mt-1">
+              <Image
+                alt="Original photo"
+                src="http://fileserver.aiputi.cn/demo/garden.jpg"
+                className="object-cover  rounded-2xl "
+                width={768}
+                height={512}
+              />
+            </div>
+
+          </div>
+        </Link>                                                          
+
+        </div>                                                          
+        )}
+        
+        
+        <ResizablePanel>
+          <AnimatePresence mode="wait">
+            <motion.div className="flex justify-between items-center w-full flex-col ">
+        
+        <div className="items-center w-full sm:pt-2 pt-2 flex sm:flex-row px-3 space-y-3 sm:mb-0 mb-3">
+          <div className="flex flex-row flex-col space-y-10 mt-4 mb-4 pt-2 rounded-xl items-center w-full space-x-2">
+
+                      <div className="grid w-full grid-flow-row-dense grid-cols-2 gap-1 sm:grid-cols-6 items-center">
+
+                        {creations.map((m) => (
+                           
+                            m.type == "Model" && m.model ? ( showModel(m.model) ) : 
+                                    ( m.type == "Prompt" && m.prompt ? showPrompt(m.prompt) : "" )
+                          
+                        ))}
+                      </div>
+          </div>
+        </div>        
+        
+              </motion.div>
+          </AnimatePresence>
+        </ResizablePanel>
+        
+       </main>
+  
+
+      <Footer />
+    </div>
+  );
+};
+
+
+export type Creation = {
+  createTime: Date;
+  type: string;
+  id: string;
+  sysScore: number;
+    
+  model?: Model;
+  prompt?: Prompt;  
+};
+    
+    
+export async function getServerSideProps(ctx: any) {
+    monitor.logUserRequest(ctx);
+  
+  const session = await getServerSession(ctx.req, ctx.res, authOptions);
+  const isLogin = session && session.user  && session.user.email ? true : false;
+  const channel = ctx.query.channel;
+    
+  let prompts = await prisma.prompt.findMany({
+    where: {
+        access: "PUBLIC",
+        status: "FINISH",
+        channel: ctx.query.channel,
+    },
+    orderBy: isLogin ?
+
+     [
+        { sysScore: 'desc', },
+        { createTime: 'desc', },       
+
+      ] :
+      [
+        { sysScore: 'desc', },
+        { runtimes: 'desc', },       
+
+      ],
+
+  });
+
+    
+   let myModels = await prisma.model.findMany({
+    where: {
+
+//        func: "lora",
+        access: "PUBLIC",
+        status: "FINISH",
+        channel: ctx.query.channel,
+    },
+    orderBy: isLogin ?
+     
+     [
+        { sysScore: 'desc', },
+        { createTime: 'desc', },       
+     
+      ] :
+      [
+        { sysScore: 'desc', },
+        { runtimes: 'desc', },       
+     
+      ],
+    
+  });
+    
+   // @ts-ignore
+   let creations : Creation[] = [{}];
+    
+  prompts.map((p) => (
+    
+    creations.push({
+      createTime: p.createTime,
+      type: "Prompt",
+      id: p.id,
+      prompt: p,
+      sysScore: p.sysScore,
+    })
+    
+  ));
+  
+    
+  myModels.map((m) => (
+    
+    creations.push({
+      createTime: m.createTime,
+      type: "Model",
+      id: m.id,
+      model: m,
+      sysScore: m.sysScore,
+    })
+    
+  ));
+    
+  creations.sort(function(x:Creation, y:Creation){
+    
+    return ((x.sysScore < y.sysScore) || 
+            ((x.sysScore == y.sysScore) && (x.createTime < y.createTime))) ? 1 : -1;
+    
+  });
+
+    
+  return {
+    props: {
+      channel,
+      creations,
+      config,
+    },
+  };
+
+  
+}      

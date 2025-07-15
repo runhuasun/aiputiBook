@@ -1,0 +1,229 @@
+import { NextPage } from "next";
+import Head from "next/head";
+import { useEffect, useState, useRef } from "react";
+import React from 'react';
+import TextareaAutosize from "react-textarea-autosize";
+import { GenerateResponseData } from "./api/generate";
+import { useSession, signIn } from "next-auth/react";
+import useSWR from "swr";
+import Link from "next/link";
+import { useRouter } from "next/router";
+
+import { CompareSlider } from "../components/CompareSlider";
+import Footer from "../components/Footer";
+import Header from "../components/Header";
+import LoadingDots from "../components/LoadingDots";
+import DropDown from "../components/DropDown";
+import LoginPage from "../components/LoginPage";
+import Uploader, {mimeTypes} from "../components/Uploader";
+import PriceTag from "../components/PriceTag";
+import LoadingButton from "../components/LoadingButton";
+import MessageZone from "../components/MessageZone";
+import RoomAdminPanel from "../components/RoomAdminPanel";
+import ComboSelector from "../components/ComboSelector";
+import FormLabel from "../components/FormLabel";
+import StartButton from "../components/StartButton";
+import Image from "../components/wrapper/Image";
+
+import { speakers, speakerCodes, speakerNames, getSpeakerByCode } from "../utils/speakers";
+import { authOptions } from "../pages/api/auth/[...nextauth]";
+import prisma from "../lib/prismadb";
+import { getServerSession } from "next-auth";
+import { config } from "../utils/config";
+import * as debug from "../utils/debug";
+import { Model, Room } from "@prisma/client";
+import downloadPhoto from "../utils/fileUtils";
+import {callAPI2} from "../utils/apiUtils";
+import * as enums from "../utils/enums";
+import * as monitor from "../utils/monitor";
+
+
+export async function getServerSideProps(ctx: any) {
+    let room;
+
+    let roomId = ctx?.query?.roomId;
+    if(roomId){
+        const v = await prisma.room.findUnique({
+            where: { id: roomId }
+        });
+        if(v?.resultType=="VOICE"){
+            room = v;
+        }
+    }
+    monitor.logUserRequest(ctx);    
+    return {
+        props: {  
+            room,
+            config
+        },
+    };
+    
+}            
+
+
+export default function createVoice({ room, config }: { room:Room, config: any }) {
+    const router = useRouter();
+   
+    const [restoredImage, setRestoredImage] = useState<string|null>(room?.outputImage);
+    const [genRoomId, setGenRoomId] = useState<string|null>(room?.id);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [restoredLoaded, setRestoredLoaded] = useState<boolean>(!!room?.outputImage);
+    const [error, setError] = useState<string | null>(null);
+    
+    const [content, setContent] = useState<string>();
+    const [sampleVoice, setSampleVoice] = useState<string>(room?.outputImage);    
+
+    const fetcher = (url: string) => fetch(url).then((res) => res.json());
+    const { data, mutate } = useSWR("/api/remaining", fetcher);
+    const { data: session, status } = useSession();
+    const [language, setLanguage] = useState("English");
+    const [priceUnits, setPriceUnits] = useState<number>(0);
+
+    const languageNames = new Map([
+        ["Mandarian Chinese", "中文普通话"],
+        ["English", "英语"],
+        ["French", "法语"],
+        ["Dutch", "德语"],        
+        ["Russian", "俄语"], 
+        ["Italian", "意大利语"],        
+        ["Japanese", "日语"],
+        ["Korean", "韩语"],        
+    ]);
+    const languages: string[] = Array.from(languageNames.keys());
+    
+    
+    async function startTrain(){
+        
+        if(!sampleVoice){
+            alert("请输入你想要转换的音频内容");
+            return;
+        }
+      
+        const res = await callAPI2(
+            "/api/generate", 
+            {
+                func: "voiceTranslate",
+                priceUnits,
+                params: {
+                    task_name: "S2ST (Speech to Speech translation)",
+                    input_audio: sampleVoice,
+                    target_language_with_speech: language
+                }
+            },
+            "语音翻译",
+            "IMAGE",
+            (status:boolean)=>{setLoading(status)},
+            (res:any)=>{
+               mutate();
+               setRestoredImage(res.result.generated);
+               setGenRoomId(res.result.genRoomId);                                      
+            }
+        );
+    }
+
+    useEffect(() => {
+        if(sampleVoice){
+            const audioPlayer = document.getElementById('audioPlayer') as HTMLAudioElement;
+    
+            if (audioPlayer) {
+                audioPlayer.onloadedmetadata = () => {
+                    setPriceUnits(Math.ceil(audioPlayer.duration));
+                };
+            }
+        }else{
+            setPriceUnits(0);
+        }
+    }, [sampleVoice]); // 依赖数组确保每次 audioUrl 变化时重载 metadata
+
+    
+    if(status == "authenticated" || status == "unauthenticated"){
+        return (
+            <div className="flex flex-col items-center justify-center bg-loraLab min-h-screen">
+                <Header config={config} title="语音翻译" subTitle="直接把一段语音翻译成各种语言的语音"/>
+                <main>                    
+                    <div className="flex justify-between items-center w-full flex-col mt-4">
+                        <div className="space-y-4 w-full max-w-xl">
+                            <FormLabel number="1" label="原始语音"/>
+                            {sampleVoice && (
+                            <div className="w-full">
+                                <audio id="audioPlayer" controls className="w-full pt-2">
+                                    <source src={sampleVoice!} type="audio/mpeg"/>
+                                    <source src={sampleVoice!} type="audio/wav"/>
+                                    <source src={sampleVoice!} type="audio/ogg"/>
+                                </audio>                                                               
+                            </div>           
+                            )}
+                            <ComboSelector fileType="VOICE" onSelect={(f)=>setSampleVoice(f)}/>
+
+                            <FormLabel number="2" label="转换目标语言"/>
+                            <DropDown 
+                                theme={language}
+                                // @ts-ignore
+                                setTheme={(newTheme) => setLanguage(newTheme)}
+                                themes={languages}
+                                names={languageNames}
+                                />
+                        </div>
+
+                        {data && (
+                        <PriceTag config={config}  units={priceUnits} unitName={"秒音频"} />
+                        )}
+                        
+                        {loading ? (
+                        <LoadingButton minTime={3} maxTime={5} timeUnit={"分钟"}/>
+                        ):(
+                        <StartButton config={config} title="开始转换语音"
+                            onStart={() => {
+                                setRestoredImage(null);
+                                setGenRoomId(null);
+                                setRestoredLoaded(false);
+                                setError(null);                                   
+                                startTrain();
+                            }}
+                        /> 
+                        )}
+
+                        {restoredImage && !loading && (
+                        <div className="w-full felx flex-col items-center max-w-xl mt-10">
+                            <div className="sm:mt-0 mt-5">
+                                <audio id="audioPlayer" controls className="w-full pt-2">
+                                    <source src={restoredImage!} type="audio/mpeg"/>
+                                    <source src={restoredImage!} type="audio/wav"/>
+                                    <source src={restoredImage!} type="audio/ogg"/>
+                                </audio>                                                               
+                            </div>
+                            <div className="sm:mt-0 mt-5 space-x-5 flex flex-row items-center justify-center">
+                                <button
+                                    onClick={() => {
+                                        downloadPhoto(restoredImage)
+                                    }}
+                                    className="button-main rounded-full text-white font-medium px-8 py-2 mt-8 hover:bg-blue-500/80 transition">
+                                    下载音频
+                                </button> 
+                                <button
+                                    onClick={() => {
+                                        window.open(`/createVideo?roomId=${genRoomId || room?.id}`, "_blank")
+                                    }}
+                                    className="button-main rounded-full text-white font-medium px-8 py-2 mt-8 hover:bg-blue-500/80 transition">
+                                    生成视频
+                                </button>                                 
+                            </div>
+                        </div>
+                        )}
+
+                        {error && (
+                        <MessageZone message={error} messageType="ERROR"/>
+                        )}                       
+                    </div>
+                </main>
+                <Footer />
+            </div>
+        );
+    
+    }else{
+        return(<LoginPage config={config}/>);
+    }   
+};
+
+    
+      

@@ -1,0 +1,112 @@
+import { Dialog, Transition } from '@headlessui/react'
+import { Fragment, useState } from 'react'
+import Image from "next/image";
+import Link from "next/link";
+
+import * as du from "../utils/deviceUtils";
+
+
+
+
+interface MediaViewerProps {
+    files: any[];
+    fileType: string;
+    title?: string;
+    isOpened?: boolean;
+    className?: string;
+}
+
+export default function MediaViewer({ title, files, fileType, 
+                                      className="w-full h-auto border border-gray-600 border-dashed px-2 py-4 text-center",
+                                      isOpened }: MediaViewerProps ) {
+    
+    const [isOpen, setIsOpen] = useState(isOpened || false);
+    const [pointer, setPointer] = useState<number>(0);
+    const [currentFile, setCurrentFile] = useState<any>(files? files[pointer] : undefined);
+    
+    function open() {
+        setIsOpen(true);
+    }
+
+    function close() {
+        setIsOpen(false);
+    }
+    
+    return (
+        <div className="w-full h-3/4-screen">
+            <button className={className}
+                onClick={() => open()} >
+                <p>{title}</p>
+            </button>
+            <Transition appear show={isOpen} as={Fragment}>
+                <Dialog as="div" className="relative z-10 focus:outline-none" onClose={close}>
+                    <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center p-4">
+                            <Transition.Child 
+                                className="w-full flex justify-center"
+                                enter="ease-out duration-300"
+                                enterFrom="opacity-0 transform-[scale(95%)]"
+                                enterTo="opacity-100 transform-[scale(100%)]"
+                                leave="ease-in duration-200"
+                                leaveFrom="opacity-100 transform-[scale(100%)]"
+                                leaveTo="opacity-0 transform-[scale(95%)]"
+                              >
+                                <Dialog.Panel className="w-full sm:w-4/5 rounded-xl bg-white/5 p-6 backdrop-blur-2xl">
+                                    {title && (
+                                    <Dialog.Title as="h3" className="text-base/7 font-medium text-white">
+                                        {title}
+                                    </Dialog.Title>
+                                    )}
+                                    {currentFile && (
+                                    <div className="w-full mt-2 text-sm/6 text-white/50">
+                                        <div className="w-full">
+                                            { currentFile.endsWith(".mp4") && (
+                                                <video
+                                                    className="w-auto"
+                                                    src={currentFile}
+                                                    poster={currentFile}
+                                                    controls={true}
+                                                    autoPlay
+                                                    height={512}
+                                                    width={512}
+                                                />
+                                            )}
+
+                                            { (currentFile.endsWith(".mp3") || currentFile.endsWith(".wav")) && (
+                                                <div className="justify-between bg-gray-800 justify-top flex flex-col">
+                                                    <audio id="audioPlayer" controls className="w-full pt-2 ">
+                                                        <source src={currentFile} type="audio/mpeg" />
+                                                    </audio>                
+                                                </div>
+                                            )}
+                                            
+                                            { (currentFile.endsWith(".jpg") || currentFile.endsWith(".png") || 
+                                                currentFile.endsWith(".jpeg") || currentFile.endsWith(".webp") ||  
+                                                currentFile.endsWith(".gif") ) && (
+                                                <Image
+                                                    alt="AI作品"
+                                                    src={currentFile}
+                                                    className=" object-cover h-auto w-auto"
+                                                />
+                                              )}  
+                                        </div>
+                                    </div>
+                                    )}
+                                    
+                                    <div className="mt-4 space-x-8 flex flex-row justify-center w-full">
+                                        <button
+                                            className=" px-8 py-2 mt-8 button-gold"
+                                            onClick={() => close()}
+                                            >
+                                            关闭
+                                        </button>
+                                    </div>
+                                </Dialog.Panel>
+                            </Transition.Child>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
+        </div>            
+    );
+}

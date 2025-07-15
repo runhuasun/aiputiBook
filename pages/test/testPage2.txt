@@ -1,0 +1,142 @@
+ declare global {
+     interface Window {
+         WeixinJSBridge: any;
+     }
+ }   
+import Head from "next/head";
+import { useSession } from "next-auth/react";
+import useSWR from "swr";
+import * as qr from 'qr-image';
+import Link from "next/link";
+import prisma from "../../lib/prismadb";
+import { Room, User } from "@prisma/client";
+import { RoomGeneration } from "../../components/RoomGenerator";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../api/auth/[...nextauth]";
+import Image from "next/image";
+import SquigglyLines from "../../components/SquigglyLines";
+import { useEffect, useState } from "react";
+import { useDropzone } from 'react-dropzone';
+import { useCallback } from 'react';
+import {showRoom} from "../../components/Genhis";
+import Footer from "../../components/Footer";
+import Header from "../../components/Header";
+import React from 'react';
+import { isMobile } from "react-device-detect";
+import { Request } from 'express';
+import { EventSourcePolyfill as ES } from "event-source-polyfill";
+import TextareaAutosize from "react-textarea-autosize";
+import {embeddingText, cosineSimilarity} from "../../utils/embedding";
+import cheerio from 'cheerio';
+import {parseStructure, parseToSentences} from "../../utils/parser";
+import https from 'https';
+import Uploader from "../../components/Uploader";
+import styled from 'styled-components';
+
+interface FloatingButtonProps {
+    onClick: () => void;
+}
+
+const FloatingButton = styled.div.attrs(() => ({
+    id: 'floatingButton'
+}))<FloatingButtonProps>`
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background-color: #007bff;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    font-size: 24px;
+    z-index: 1000;
+`;
+
+interface FloatingMenuProps {
+    visible: boolean;
+}
+
+const FloatingMenu = styled.div<FloatingMenuProps>`
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    background-color: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    z-index: 1000;
+    display: ${props => (props.visible ? 'block' : 'none')};
+`;
+
+const MenuList = styled.ul`
+    list-style: none;
+    padding: 10px;
+    margin: 0;
+`;
+
+const MenuItem = styled.li`
+    margin: 10px 0;
+`;
+
+const MenuLink = styled.a`
+    text-decoration: none;
+    color: #333;
+`;
+
+export default function testPage2() {
+    
+    const { data: session } = useSession();
+    const [menuVisible, setMenuVisible] = useState(false);
+
+   const toggleMenu = () => {
+        setMenuVisible(!menuVisible);
+    };
+
+    const handleClickOutside = (event: MouseEvent) => {
+        const button = document.getElementById('floatingButton');
+        const menu = document.getElementById('floatingMenu');
+        if (button && menu && !button.contains(event.target as Node) && !menu.contains(event.target as Node)) {
+            setMenuVisible(false);
+        }
+    };
+
+    useEffect(() => {
+        document.addEventListener('click', handleClickOutside);
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, []);
+
+    return (
+        <div className="flex mx-auto w-full  flex-col items-center justify-center min-h-screen">
+            <Head>
+                <title>AI菩提</title>
+            </Head>
+            <Header/>
+
+            
+            <main className="flex flex-1 w-full flex-col items-center justify-center text-center sm:px-4 px-0 py-6 background-gradient">
+                <h1 className="mx-auto max-w-4xl font-display text-3xl font-bold tracking-normal py-2 text-white mb:50 sm:text-4xl">
+                    实验功能页
+                </h1>   
+
+        <div>
+            <FloatingButton onClick={toggleMenu}>i</FloatingButton>
+            <FloatingMenu id="floatingMenu" visible={menuVisible}>
+                <MenuList>
+                    <MenuItem><MenuLink href="#">Menu Item 1</MenuLink></MenuItem>
+                    <MenuItem><MenuLink href="#">Menu Item 2</MenuLink></MenuItem>
+                    <MenuItem><MenuLink href="#">Menu Item 3</MenuLink></MenuItem>
+                </MenuList>
+            </FloatingMenu>
+        </div>
+                
+            </main>
+            <Footer />
+        </div>
+    );
+}

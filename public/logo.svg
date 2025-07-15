@@ -1,0 +1,16 @@
+<svg width="100" height="100" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 照相机主体 -->
+  <rect x="8" y="16" width="48" height="32" rx="4" ry="4" fill="rgba(200, 200, 200, 0.5)" stroke="rgba(0, 0, 0, 0.1)" stroke-width="2"/>
+  
+  <!-- 镜头外圈 -->
+  <circle cx="32" cy="32" r="10" fill="rgba(255, 255, 255, 0.8)" stroke="rgba(0, 0, 0, 0.1)" stroke-width="2"/>
+  
+  <!-- 镜头内圈 -->
+  <circle cx="32" cy="32" r="6" fill="rgba(200, 200, 200, 0.5)" stroke="rgba(0, 0, 0, 0.1)" stroke-width="2"/>
+  
+  <!-- 闪光灯 -->
+  <rect x="14" y="20" width="6" height="4" fill="rgba(255, 255, 255, 0.8)" stroke="rgba(0, 0, 0, 0.1)" stroke-width="2"/>
+  
+  <!-- 取景框 -->
+  <rect x="44" y="20" width="10" height="8" rx="2" ry="2" fill="rgba(255, 255, 255, 0.8)" stroke="rgba(0, 0, 0, 0.1)" stroke-width="2"/>
+</svg>

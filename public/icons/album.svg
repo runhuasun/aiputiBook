@@ -1,0 +1,17 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <!-- 图标的背景边框 -->
+    <rect x="1" y="1" width="30" height="30" rx="4" ry="4" fill="none" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- 第一张照片背景 -->
+    <rect x="8" y="10" width="16" height="12" fill="#cccccc" rx="2" ry="2"/>
+
+    <!-- 第二张叠加的照片 -->
+    <rect x="10" y="8" width="16" height="12" fill="#aaaaaa" rx="2" ry="2" opacity="0.5"/>
+
+    <!-- 照片中的太阳图案 -->
+    <circle cx="14" cy="14" r="2" fill="#eeeeee"/>
+    
+    <!-- 照片中的山形 -->
+    <polygon points="10,20 14,16 18,20" fill="#cccccc"/>
+    <polygon points="14,20 18,16 22,20" fill="#cccccc"/>
+</svg>

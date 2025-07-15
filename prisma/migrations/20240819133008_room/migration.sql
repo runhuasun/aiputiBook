@@ -1,0 +1,3 @@
+
+-- AlterTable
+ALTER TABLE "Room" ADD COLUMN "resultType" TEXT NOT NULL DEFAULT 'UNKNOWN';    -- 结果类型 IMAGE, VIDEO, VOICE, JSON, MESSAGE

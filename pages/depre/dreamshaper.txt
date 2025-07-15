@@ -1,0 +1,214 @@
+import { AnimatePresence, motion } from "framer-motion";
+import { NextPage } from "next";
+import Link from "next/link";
+import Head from "next/head";
+import Image from "next/image";
+import { useState } from "react";
+import React from 'react';
+import Footer from "../components/Footer";
+import Header from "../components/Header";
+import LoadingDots from "../components/LoadingDots";
+import ResizablePanel from "../components/ResizablePanel";
+import Toggle from "../components/Toggle";
+import appendNewToName from "../utils/appendNewToName";
+import downloadPhoto from "../utils/downloadPhoto";
+import { GenerateResponseData } from "./api/generate";
+import { useSession, signIn } from "next-auth/react";
+import useSWR from "swr";
+import { Rings } from "react-loader-spinner";
+import { useRouter } from "next/router";
+
+
+//  {status === "authenticated" && data && !restoredImage && (
+
+
+import prisma from "../lib/prismadb";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../pages/api/auth/[...nextauth]";
+import { Room } from "@prisma/client";
+import Genhis from "../components/Genhis";
+
+//  {status === "authenticated" && data && !restoredImage && (
+
+export async function getServerSideProps(ctx: any) {
+  const session = await getServerSession(ctx.req, ctx.res, authOptions);
+    
+  let imghis = await prisma.room.findMany({
+    where: {
+        func: "dreamshaper",
+    },
+    select: {
+      id: true,
+      inputImage: true,
+      outputImage: true,
+      prompt: true,
+      viewTimes: true,
+      dealTimes: true,
+      likes: true,      
+    },
+  });
+
+  return {
+    props: {
+      imghis,
+    },
+  };
+}  
+
+//const Home: NextPage = () => {
+export default function cartoon({ imghis }: { imghis: Room[] }) {
+
+  const [restoredImage, setRestoredImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [restoredLoaded, setRestoredLoaded] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [photoName, setPhotoName] = useState<string | null>(null);
+
+  const fetcher = (url: string) => fetch(url).then((res) => res.json());
+  const { data, mutate } = useSWR("/api/remaining", fetcher);
+  const { data: session, status } = useSession();
+  const [prompt, setValue] = useState("");
+  
+  const router = useRouter();
+  let tizi = router.query.price;
+  
+  async function generatePhoto(fileUrl: string) {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    setLoading(true);
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ imageUrl: fileUrl, theme:"", room:"", inputText: prompt, func: "dreamshaper", price: tizi }),
+    });
+
+    let response = (await res.json()) as GenerateResponseData;
+    if (res.status !== 200) {
+      setError(response as any);
+    } else {
+      mutate();
+      setRestoredImage(response.generated);
+    }
+    setTimeout(() => {
+      setLoading(false);
+    }, 1300);
+  }
+
+  return (
+    <div className="flex mx-auto flex-col items-center justify-center min-h-screen">
+      <Head>
+        <title>AI 菩提</title>
+      </Head>
+      <Header photo={session?.user?.image || undefined} />
+      <main className="flex flex-1 w-full flex-col items-center justify-center text-center px-4 mt-4 sm:mb-0 mb-8">
+
+        <h1 className="mx-auto max-w-4xl font-display text-4xl font-bold tracking-normal text-black-100 sm:text-6xl mb-5">
+          开始让 <span className="text-blue-600">AI</span> 帮你画个梦中人
+        </h1>
+          {1 === 1 && data && !restoredImage && (
+          <p className="text-grey-800">
+          输入你此时的想法，看看AI的脑洞有多大：
+          </p>
+        )}
+        <ResizablePanel>
+          <AnimatePresence mode="wait">
+            <motion.div className="flex justify-between items-center w-full flex-col mt-4">
+              <div
+                className={`${
+                  restoredLoaded ? "visible mt-6 -ml-8" : "invisible"
+                }`}
+              >
+
+              </div>
+              {status === "loading" ? (
+                <div className="max-w-[670px] h-[250px] flex justify-center items-center">
+                  <Rings
+                    height="100"
+                    width="100"
+                    color="white"
+                    radius="6"
+                    wrapperStyle={{}}
+                    wrapperClass=""
+                    visible={true}
+                    ariaLabel="rings-loading"
+                  />
+                </div>
+              ) : (
+                <>
+                  <input id="iptPrompt" type="text"  
+                    placeholder="一个中国古代战士在竹林中穿行"  
+                    className="bg-white rounded-full text-black border font-medium px-4 py-2 hover:bg-gray-100 transition sm:mt-0 mt-2 w-full h-16" 
+                    onChange={(e) => setValue(e.target.value)} />
+                  <button
+                    onClick={() => {
+                      generatePhoto(""
+                      );
+                    }}
+                    className="bg-blue-500 rounded-full text-white font-medium px-4 py-2 mt-8 hover:bg-blue-500/80 transition"
+                  >
+                    生成创意
+                  </button>                   
+                   
+                 </>
+              ) }
+              
+              {loading && (
+                <div>
+                  <button
+                    disabled
+                    className="bg-blue-500 rounded-full text-white font-medium px-4 pt-2 pb-3 mt-8 w-40"
+                  >
+                    <span className="pt-4">
+                      <LoadingDots color="white" style="large" />
+                    </span>
+                  </button>
+                  <div  className="border border-t-0 border-red-400 rounded-b bg-red-100 px-4 py-3 text-red-700">
+                         服务器大概需要10-20秒处理，请耐心等待。
+                  </div>
+                 </div>
+              )}
+
+              
+               {restoredImage && (
+                <div className="flex sm:space-x-4 sm:flex-row flex-col">
+                  <div className="sm:mt-0 mt-8">
+                      <Image
+                        alt="restored photo"
+                        src={restoredImage}
+                        className="rounded-2xl relative sm:mt-0 mt-2"
+                        width={512}
+                        height={512}
+                        onLoadingComplete={() => setRestoredLoaded(true)}
+                      />
+    
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div
+                  className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl mt-8 max-w-[575px]"
+                  role="alert"
+                >
+                  <div className="bg-red-500 text-white font-bold rounded-t px-4 py-2">
+                    服务发生错误，请过一会再尝试...
+                  </div>
+                  <div className="border border-t-0 border-red-400 rounded-b bg-red-100 px-4 py-3 text-red-700">
+                    {error}
+                  </div>
+                </div>
+              )}
+             </motion.div>
+          </AnimatePresence>
+        </ResizablePanel>
+             
+        <Genhis imghis={imghis} />
+
+      </main>
+      <Footer />
+    </div>
+  );
+};
+
+// export default Home;

@@ -1,0 +1,19 @@
+<svg width="64" height="64" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- 相机主体 -->
+    <rect x="4" y="8" width="24" height="18" rx="2" ry="2" stroke="#E6B775" stroke-width="2"/>
+    
+    <!-- 相机顶部 -->
+    <rect x="10" y="5" width="12" height="4" rx="1" ry="1" stroke="#E6B775" stroke-width="2"/>
+    
+    <!-- 镜头外框 -->
+    <circle cx="16" cy="17" r="6" stroke="#E6B775" stroke-width="2"/>
+    
+    <!-- 镜头内圈 -->
+    <circle cx="16" cy="17" r="2" fill="#E6B775"/>
+
+    <!-- 闪光灯 -->
+    <circle cx="24" cy="12" r="1" fill="#E6B775"/>
+
+    <!-- AI文字部分 -->
+    <text x="7" y="27" fill="#E6B775" font-family="Arial, sans-serif" font-size="6" font-weight="bold">AI</text>
+</svg>
